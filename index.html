@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Lab 10 - GeoJSON Choropleth Map with Legend</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+  
+  <style>
+    #map { height: 100vh; }
+
+    /* 🎨 Legend Style */
+    .legend {
+      line-height: 18px;
+      color: #555;
+      background-color: #eeeeee;
+      padding: 6px;
+    }
+    .legend i {
+      width: 18px;
+      height: 18px;
+      float: left;
+      margin-right: 8px;
+      opacity: 0.8;
+    }
+  </style>
+</head>
+<body>
+  <h1>Denver ACS 2021</h1>
+  <h2>Poverty Rate Choropleth Map with Legend</h2>
+  <div id="map"></div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+
+  <script>
+    // Create the map object
+    var map = L.map('map').setView([39.7392, -104.9903], 11);
+
+    // Basemap layers
+    var OSMTiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    var HOTOSMTiles = L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors, Humanitarian style'
+    });
+
+    var OpenTopoMap = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenTopoMap contributors'
+    });
+
+    // Base maps object
+    var baseMaps = {
+      "OpenStreetMap": OSMTiles,
+      "Humanitarian OSM": HOTOSMTiles,
+      "OpenTopoMap": OpenTopoMap
+    };
+
+    // Add layer control
+    var layerControl = L.control.layers(baseMaps, null).addTo(map);
+
+    // Styling function for poverty rates
+    function style1(feature) {
+      var d = feature.properties.PCT_POVERTY;
+      var answer = d > 30 ? '#800026' :
+                   d > 20 ? '#BD0026' :
+                   d > 15 ? '#E31A1C' :
+                   d > 10 ? '#FC4E2A' :
+                   d > 5  ? '#FD8D3C' :
+                   d > 3  ? '#FEB24C' :
+                   d > 1  ? '#FED976' :
+                            '#FFEDA0';
+      return {
+        fillColor: answer,
+        weight: 1,
+        opacity: 1,
+        color: 'white',
+        dashArray: '3',
+        fillOpacity: 0.7
+      };
+    }
+
+    // Load and display the GeoJSON layer
+    fetch("acs_denver_2021.geojson")
+      .then(response => response.json())
+      .then(data => {
+        var acsDenver2021Layer = L.geoJSON(data, {
+          style: style1,
+          onEachFeature: function(feature, layer) {
+            layer.bindPopup("Percent Poverty: " + feature.properties.PCT_POVERTY + "%");
+          }
+        }).addTo(map);
+        map.fitBounds(acsDenver2021Layer.getBounds());
+        layerControl.addOverlay(acsDenver2021Layer, "Denver ACS 2021 - Poverty Rate");
+      });
+
+    // ✅ Add the legend to the map
+    var legend = L.control({position: 'bottomright'});
+
+    legend.onAdd = function (map) {
+      var div = L.DomUtil.create('div', 'info legend');
+      var colors = ['#FFEDA0','#FED976','#FEB24C','#FD8D3C','#FC4E2A','#E31A1C','#BD0026','#800026'];
+      var labels = ['0 - 1%', '1 - 3%', '3 - 5%', '5 - 10%', '10 - 15%', '15 - 20%', '20 - 30%', '30%+'];
+
+      div.innerHTML = '<h2>% Poverty</h2>';
+      for (var i = 0; i < colors.length; i++) {
+        div.innerHTML += '<i style="background:' + colors[i] + '"></i> ' + labels[i] + '<br>';
+      }
+
+      return div;
+    };
+
+    legend.addTo(map);
+  </script>
+</body>
+</html>
